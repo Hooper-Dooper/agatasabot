@@ -47,7 +47,7 @@
 
         <label for="reserveDate">2. 日にちを選んでください</label>
         <input type="date" id="reserveDate" name="reserveDate" required onchange="handleDateChange(this)">
-        <p class="note">※今日から30日先まで選べます</p>
+        <p class="note">※今日から 30 日先まで選べます</p>
         <p id="loadingText">空いている時間を調べています。すこし待ってね...</p>
         <div id="errorLog"></div>
 
@@ -67,8 +67,8 @@
 </div>
 
 <script>
-    // https://script.google.com/macros/s/AKfycbxQ06nKGq0rqi7YDdAWnqO-XuybmGSggvTbijFkE_j9F7eVLIchwXXnKLXckK9tGlVM/exec
-    const GAS_URL = "ここにGASで発行したURLを貼り付けます";
+    // https://google.com
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzxYSE5kDrXNlBOPyZBRwqIRBTsvSG_p2XdJaXPljfOiPUkUwczkyEx13E0y2Bv7jsM/exec";
 
     const dateInput = document.getElementById('reserveDate');
     const today = new Date();
@@ -129,7 +129,6 @@
         fetch(url)
         .then(res => res.json())
         .then(slots => {
-            // もしGAS側からエラーメッセージが直接返ってきた場合
             if (slots.status === "error") {
                 throw new Error(slots.message);
             }
@@ -185,12 +184,16 @@
                 alert("エラー: " + result.message);
             }
         })
-        .catch(err => alert("通信エラーが発生しました。"))
+        .catch(err => {
+            alert("通信エラーが発生しました: " + err.message);
+        })
         .finally(() => {
             btn.disabled = false;
             btn.textContent = "この内容で予約する";
         });
     });
 </script>
+
 </body>
 </html>
+
