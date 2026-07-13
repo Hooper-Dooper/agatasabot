@@ -1,232 +1,129 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>施設見学・体験 予約システム</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; background: #f9f9f9; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #4A5568; font-size: 24px; }
-        .section { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
-        .section-title { font-weight: bold; margin-bottom: 10px; display: block; }
-        label { display: block; margin-bottom: 8px; cursor: pointer; }
-        input[type="text"], input[type="tel"], select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
-        input[type="radio"] { margin-right: 8px; transform: scale(1.2); }
-        .time-slot { display: inline-block; padding: 10px 15px; margin: 5px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; background: #f8fafc; }
-        .time-slot.selected { background: #3b82f6; color: white; border-color: #2563eb; }
-        .time-slot.disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
-        button { width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #059669; }
-        #loading { color: #666; font-style: italic; }
-        .hidden { display: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>施設見学・体験 予約カレンダー</title>
+<style>
+body{font-family:'Helvetica Neue',Arial,sans-serif;background-color:#f7f9fa;color:#333;margin:0;padding:20px;}
+.container{max-width:600px;margin:0 auto;background:white;padding:30px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.05);}
+h1{text-align:center;font-size:24px;color:#2c3e50;margin-bottom:25px;}
+label{font-weight:bold;display:block;margin-top:20px;margin-bottom:8px;font-size:16px;}
+.type-selector{display:flex;gap:15px;margin-bottom:20px;}
+.type-btn{flex:1;padding:15px;font-size:18px;font-weight:bold;border:2px solid #cbd5e1;border-radius:8px;background:white;cursor:pointer;transition:all 0.2s;}
+.type-btn.selected{background:#3498db;color:white;border-color:#3498db;}
+input[type="text"],input[type="tel"],input[type="date"],select,textarea{width:100%;padding:12px;font-size:16px;border:2px solid #cbd5e1;border-radius:8px;box-sizing:border-box;font-family:inherit;}
+input[type="date"].has-value{background-color:#e8f4fd;border-color:#3498db;}
+select.has-value{background-color:#e8f4fd;border-color:#3498db;}
+textarea{resize:vertical;min-height:80px;}
+option:disabled{color:#94a3b8;background-color:#f1f5f9;}
+.submit-btn{width:100%;background:#2ecc71;color:white;border:none;padding:15px;font-size:20px;font-weight:bold;border-radius:8px;cursor:pointer;margin-top:30px;}
+.submit-btn:disabled{background:#bdc3c7;cursor:not-allowed;}
+.note{font-size:14px;color:#7f8c8d;margin-top:5px;}
+#loadingText{color:#e67e22;font-weight:bold;display:none;margin-top:5px;}
+#errorLog{background-color:#fde8e8;color:#e74c3c;padding:10px;border-radius:6px;margin-top:10px;font-size:14px;display:none;border:1px solid #f5c6cb;}
+.trial-only-fields{display:none;}
+</style>
 </head>
 <body>
-
 <div class="container">
-    <h1 id="page-title">施設見学 ・ 体験 予約</h1>
-
-    <form id="reservation-form">
-        <input type="hidden" id="user-type" name="userType" value="A">
-
-        <!-- 1. どちらを希望しますか？ -->
-        <div class="section">
-            <span class="section-title">1. どちらを希望しますか？</span>
-            <label><input type="radio" name="reservationType" value="見学" checked onchange="toggleWorkSection(); fetchAvailableTimes();"> 見学 (1時間)</label>
-            <label><input type="radio" name="reservationType" value="体験" onchange="toggleWorkSection(); fetchAvailableTimes();"> 体験 (2時間)</label>
-        </div>
-
-        <!-- 2. 日にちを選んでください -->
-        <div class="section">
-            <span class="section-title">2. 日にちを選んでください</span>
-            <input type="date" id="reservation-date" name="date" required onchange="fetchAvailableTimes()">
-        </div>
-
-        <!-- 3. 時間を選んでください -->
-        <div class="section">
-            <span class="section-title">3. 時間を選んでください</span>
-            <div id="time-slots-container">
-                <span id="loading">-- 日にちを先に選んでください --</span>
-            </div>
-            <input type="hidden" id="selected-time" name="time" required>
-        </div>
-
-        <!-- 基本情報入力 -->
-        <div class="section">
-            <label><span class="section-title">4. お名前</span><input type="text" name="name" required></label>
-        </div>
-        <div class="section">
-            <label><span class="section-title">5. 電話番号</span><input type="tel" name="phone" required></label>
-        </div>
-        <div class="section">
-            <label><span class="section-title">6. 障害名/病名</span><input type="text" name="condition" required></label>
-        </div>
-        <div class="section">
-            <label><span class="section-title">7. 同伴者 (同行される場合のみ記入)</span><input type="text" name="companion"></label>
-        </div>
-
-        <!-- 8. 体験したい作業 (B型体験時は非表示) -->
-        <div class="section" id="work-section">
-            <span class="section-title">8. 体験したい作業 (体験の場合のみ記入)</span>
-            <select name="workType" id="work-type">
-                <option value="">-- 作業内容を選んでください --</option>
-                <option value="動画編集">動画編集</option>
-                <option value="PC作業（事務/デザイン）">PC作業（事務/デザイン）</option>
-                <option value="ネイリスト（有資格者のみ）">ネイリスト（有資格者のみ）</option>
-            </select>
-        </div>
-
-        <!-- 9. その他 -->
-        <div class="section">
-            <label><span class="section-title">9. その他</span><input type="text" name="notes"></label>
-        </div>
-
-        <button type="submit">この内容で予約する</button>
-    </form>
+<h1>施設見学 ・ 体験 予約</h1>
+<label>1. どちらを希望しますか？</label>
+<div class="type-selector">
+<button type="button" class="type-btn selected" id="btn-visit" onclick="selectType('見学',1)">見学 (1時間)</button>
+<button type="button" class="type-btn" id="btn-trial" onclick="selectType('体験',2)">体験 (2時間)</button>
 </div>
-
+<form id="reserveForm">
+<input type="hidden" id="reserveType" name="reserveType" value="見学">
+<input type="hidden" id="duration" name="duration" value="1">
+<label for="reserveDate">2. 日にちを選んでください</label>
+<input type="date" id="reserveDate" name="reserveDate" required onchange="handleDateChange(this)">
+<p class="note">※今日から30日先まで選べます</p>
+<p id="loadingText">空いている時間を調べています。すこし待ってね...</p>
+<div id="errorLog"></div>
+<label for="reserveTime">3. 時間を選んでください</label>
+<select id="reserveTime" name="reserveTime" required disabled onchange="handleTimeChange(this)">
+<option value="">-- 日にちを先に選んでください --</option>
+</select>
+<label for="userName">4. お名前</label>
+<input type="text" id="userName" name="userName" placeholder="（例）じょうほう ぶろう" required>
+<label for="userPhone">5. 電話番号</label>
+<input type="tel" id="userPhone" name="userPhone" placeholder="（例）09012345678" required>
+<label for="illnessName">6. 障害名/病名</label>
+<input type="text" id="illnessName" name="illnessName" placeholder="ご記入ください">
+<label for="companionName">7. 同伴者 (同行される場合のみ記入)</label>
+<input type="text" id="companionName" name="companionName" placeholder="お名前をご記入ください">
+<div id="trialFields" class="trial-only-fields">
+<label for="desiredTask">8. 体験したい作業 (体験の場合のみ記入)</label>
+<select id="desiredTask" name="desiredTask" onchange="handleTimeChange(this)">
+<option value="">-- 作業内容を選んでください --</option>
+<option value="動画編集">動画編集</option>
+<option value="PC作業（事務/デザイン）">PC作業（事務/デザイン）</option>
+<option value="ネイリスト（有資格者のみ）">ネイリスト（有資格者のみ）</option>
+</select>
+</div>
+<label for="otherComment">9. その他</label>
+<textarea id="otherComment" name="otherComment" placeholder="質問があれば記載してください"></textarea>
+<button type="submit" class="submit-btn" id="submitBtn">この内容で予約する</button>
+</form>
+</div>
 <script>
-    // ⚠️【注意】ここに現在デプロイされている最新のGASのウェブアプリURLを貼り付けてください！
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxBQEah1tZMWWbttkf8FcvrFfmcRbWjvaJJIr28MxWYHwHiiHgOBoCYCnSmS7fkTMRf/exec";
-
-    window.onload = function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('type') === 'b' || urlParams.get('type') === 'B') {
-            document.getElementById('user-type').value = 'B';
-            document.getElementById('page-title').innerText = '就労継続支援B型 施設見学・体験 予約';
-        } else {
-            document.getElementById('user-type').value = 'A';
-            document.getElementById('page-title').innerText = '施設見学・体験 予約';
-        }
-        
-        const today = new Date();
-        const maxDate = new Date();
-        maxDate.setDate(today.getDate() + 30);
-        
-        document.getElementById('reservation-date').min = today.toISOString().split('T');
-        document.getElementById('reservation-date').max = maxDate.toISOString().split('T');
-
-        toggleWorkSection();
-    };
-
-    function toggleWorkSection() {
-        const userType = document.getElementById('user-type').value;
-        const reservationType = document.querySelector('input[name="reservationType"]:checked').value;
-        const workSection = document.getElementById('work-section');
-        const workTypeSelect = document.getElementById('work-type');
-
-        if (reservationType === '見学' || (userType === 'B' && reservationType === '体験')) {
-            workSection.classList.add('hidden');
-            workTypeSelect.removeAttribute('required');
-            workTypeSelect.value = "";
-        } else {
-            workSection.classList.remove('hidden');
-            if (reservationType === '体験') {
-                workTypeSelect.setAttribute('required', 'required');
-            }
-        }
-    }
-
-    // 💡【CORS遮断を100%回避するJSONP方式へ全面書き換え】
-    function fetchAvailableTimes() {
-        const date = document.getElementById('reservation-date').value;
-        const userType = document.getElementById('user-type').value;
-        const reservationType = document.querySelector('input[name="reservationType"]:checked').value;
-        const container = document.getElementById('time-slots-container');
-
-        if (!date) return;
-
-        container.innerHTML = '<span id="loading">空いている時間を調べています。すこし待ってね...</span>';
-        document.getElementById('selected-time').value = "";
-
-        // 過去の通信履歴（古いスクリプトタグ）があれば消去
-        const oldScript = document.getElementById('gas-jsonp');
-        if (oldScript) oldScript.remove();
-
-        // 完全にセキュリティ制限を迂回する通信タグ（Script）を生成
-        const script = document.createElement('script');
-        script.id = 'gas-jsonp';
-        // GAS側へ「callback=renderSlots」という命令を付けてデータをねだります
-        script.src = `${GAS_WEB_APP_URL}?action=getSlots&date=${date}&userType=${userType}&resType=${reservationType}&callback=renderSlots`;
-        
-        // 通信に失敗した場合のセーフティネット
-        script.onerror = function() {
-            container.innerHTML = "<span style='color:red;'>通信に失敗しました。GASのURLまたは公開設定（全員）を確認してください。</span>";
-        };
-
-        document.body.appendChild(script);
-    }
-
-    // GASからデータが戻ってきたら自動的に実行される関数
-    function renderSlots(data) {
-        const container = document.getElementById('time-slots-container');
-        container.innerHTML = "";
-        
-        if (data && data.length === 1 && data[0].time === "エラー") {
-            container.innerHTML = `<span style='color:red; font-weight:bold;'>❌ 設定エラー：${data[0].message}</span>`;
-            return;
-        }
-
-        if (!data || data.length === 0) {
-            container.innerHTML = "<span style='color:red;'>全ての枠が埋まっています。</span>";
-            return;
-        }
-
-        data.forEach(slot => {
-            const div = document.createElement('div');
-            div.className = `time-slot ${slot.available ? '' : 'disabled'}`;
-            div.innerText = slot.time;
-            
-            if (slot.available) {
-                div.onclick = function() {
-                    document.querySelectorAll('.time-slot').forEach(el => el.classList.remove('selected'));
-                    div.classList.add('selected');
-                    document.getElementById('selected-time').value = slot.time;
-                };
-            }
-            container.appendChild(div);
-        });
-    }
-
-    // 予約実行（POST）も安全に送信する処理
-    document.getElementById('reservation-form').onsubmit = function(e) {
-        e.preventDefault();
-        
-        const selectedTime = document.getElementById('selected-time').value;
-        if (!selectedTime) {
-            alert("時間を選択してください。");
-            return;
-        }
-
-        const formData = new FormData(this);
-        const data = {};
-        formData.forEach((value, key) => { data[key] = value; });
-        data.action = "submitReservation";
-
-        const submitBtn = document.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        submitBtn.innerText = "予約処理中...";
-
-        // POST送信も確実なリダイレクト処理（follow）を明示
-        fetch(GAS_WEB_APP_URL, {
-            method: "POST",
-            mode: "no-cors", // セキュリティ遮断を完全にスルーする設定
-            body: JSON.stringify(data)
-        })
-        .then(() => {
-            // no-corsモードは成否がブラウザで隠蔽されるため、送信完了として処理を確定させます
-            alert("予約リクエストを送信しました！カレンダーをご確認ください。");
-            location.reload();
-        })
-        .catch(err => {
-            console.error(err);
-            alert("送信中にエラーが発生しました。");
-            submitBtn.disabled = false;
-            submitBtn.innerText = "この内容で予約する";
-        });
-    };
+const GAS_URL="https://script.google.com/macros/s/AKfycbz8s9kvntKunvDdUGG4caJuzDnWpxndllkOhPmrA8FyYGzlkxCJ1nicgcRThTC9pfls/exec";
+const dateInput=document.getElementById('reserveDate');
+const today=new Date();
+const maxDate=new Date();
+maxDate.setDate(today.getDate()+30);
+dateInput.min=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+dateInput.max=`${maxDate.getFullYear()}-${String(maxDate.getMonth()+1).padStart(2,'0')}-${String(maxDate.getDate()).padStart(2,'0')}`;
+function selectType(type,hours){
+document.getElementById('reserveType').value=type;
+document.getElementById('duration').value=hours;
+document.getElementById('btn-visit').classList.toggle('selected',type==='見学');
+document.getElementById('btn-trial').classList.toggle('selected',type==='体験');
+const tf=document.getElementById('trialFields');
+if(type==='体験'){tf.style.display='block';}else{tf.style.display='none';const s=document.getElementById('desiredTask');s.value='';s.classList.remove('has-value');}
+if(dateInput.value)fetchAvailableSlots(dateInput.value);
+}
+function handleDateChange(input){if(input.value){input.classList.add('has-value');fetchAvailableSlots(input.value);}else{input.classList.remove('has-value');}}
+function handleTimeChange(select){if(select.value){select.classList.add('has-value');}else{select.classList.remove('has-value');}}
+function fetchAvailableSlots(dateStr){
+const ts=document.getElementById('reserveTime');
+const lt=document.getElementById('loadingText');
+const el=document.getElementById('errorLog');
+const type=document.getElementById('reserveType').value;
+lt.style.display="block";el.style.display="none";ts.disabled=true;ts.innerHTML='<option value="">調べる中...</option>';
+fetch(`${GAS_URL}?action=check&date=${dateStr}&type=${encodeURIComponent(type)}`,{redirect:"follow"})
+.then(res=>{if(!res.ok)throw new Error("サーバー通信エラー");return res.json();})
+.then(slots=>{
+if(slots.status==="error")throw new Error(slots.message);
+ts.innerHTML='<option value="">-- 時間枠を選んでください --</option>';
+slots.forEach(slot=>{
+const op=document.createElement('option');op.value=slot.start;
+if(slot.available){op.textContent=`${slot.start} ～ ${slot.end}`;}else{op.textContent=`× ${slot.start} ～ ${slot.end} (予定あり)`;op.disabled=true;}
+ts.appendChild(op);
+});
+ts.disabled=false;
+})
+.catch(err=>{ts.innerHTML='<option value="">エラー発生</option>';el.innerText="【エラー】: "+err.message;el.style.display="block";alert("取得失敗:\n"+err.message);})
+.finally(()=>{lt.style.display="none";});
+}
+document.getElementById('reserveForm').addEventListener('submit',function(e){
+e.preventDefault();
+const btn=document.getElementById('submitBtn');
+const el=document.getElementById('errorLog');
+btn.disabled=true;btn.textContent="送信中...";el.style.display="none";
+fetch(GAS_URL,{method:"POST",body:new URLSearchParams(Object.fromEntries(new FormData(this).entries())),redirect:"follow"})
+.then(res=>{if(!res.ok)throw new Error("送信失敗");return res.json();})
+.then(result=>{
+if(result.status==="success"){
+alert("予約が完了しました！");this.reset();dateInput.classList.remove('has-value');
+const ts=document.getElementById('reserveTime');ts.classList.remove('has-value');
+ts.innerHTML='<option value="">-- 日にちを先に選んでください --</option>';ts.disabled=true;selectType('見学',1);
+}else{throw new Error(result.message||"予約処理エラー");}
+})
+.catch(err=>{el.innerText="【送信エラー】: "+err.message;el.style.display="block";alert("予約失敗:\n"+err.message);})
+.finally(()=>{btn.disabled=false;btn.textContent="この内容で予約する";});
+});
 </script>
-
 </body>
 </html>
