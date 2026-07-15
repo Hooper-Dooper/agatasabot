@@ -41,7 +41,7 @@ option:disabled{color:#94a3b8;background-color:#f1f5f9;}
 <input type="hidden" id="reserveType" name="reserveType" value="見学">
 <input type="hidden" id="duration" name="duration" value="1">
 <label for="reserveDate">2. 日にちを選んでください</label>
-<input type="date" id="reserveDate" name="reserveDate" required onchange="handleDateChange(this)">
+<input type="date" id="reserveDate" name="reserveDate" required>
 <p class="note">※今日から30日先まで選べます</p>
 <p id="loadingText">空いている時間を調べています。すこし待ってね...</p>
 <div id="errorLog"></div>
@@ -152,6 +152,42 @@ ts.disabled=false;
 .catch(err=>{ts.innerHTML='<option value="">エラー発生</option>';el.innerText="【エラー】: "+err.message;el.style.display="block";alert("取得失敗:\n"+err.message);})
 .finally(()=>{lt.style.display="none";});
 }
+// iPhoneでカレンダーを開いただけで勝手に発火するのを防ぐ対策
+let isChanging = false;
+dateInput.addEventListener('change', () => { isChanging = true; });
+
+// カレンダーを閉じて、日付の選択が完全に「確定」した時だけ処理を実行する
+dateInput.addEventListener('blur', function() {
+    if (!isChanging) return; // 実際に値が変わっていなければ何もしない
+    isChanging = false;
+
+    if (!this.value) {
+        this.classList.remove('has-value');
+        return;
+    }
+
+    // 選択された日付をセット（タイムゾーンのズレ防止のため時間を12時に設定）
+    const selectedDate = new Date(this.value + "T12:00:00");
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    // 当日、または過去の日付が選ばれた場合のチェック
+    if (selectedDate <= today) {
+        alert("当日および過去の予約はできません。\n明日以降の日付を選択してください。");
+        this.value = ""; // 選択をクリア
+        this.classList.remove('has-value');
+        
+        const ts = document.getElementById('reserveTime');
+        ts.innerHTML = '<option value="">-- 日にちを先に選んでください --</option>';
+        ts.disabled = true;
+        return;
+    }
+
+    // 正常な日付（明日以降）であれば処理を続行
+    this.classList.add('has-value');
+    fetchAvailableSlots(this.value);
+});
+
 document.getElementById('reserveForm').addEventListener('submit',function(e){
 e.preventDefault();
 const btn=document.getElementById('submitBtn');
