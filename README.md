@@ -46,7 +46,7 @@ option:disabled{color:#94a3b8;background-color:#f1f5f9;}
 <option value="">-- 日にちを先に選んでください --</option>
 </select>
 <label for="userName">4. お名前</label>
-<input type="text" id="userName" name="userName" placeholder="（例）じょうほう ぶろう" required>
+<input type="text" id="userName" name="userName" placeholder="（例）さぼてん　太郎" required>
 <label for="userPhone">5. 電話番号</label>
 <input type="tel" id="userPhone" name="userPhone" placeholder="（例）09012345678" required>
 <label for="illnessName">6. 障害名/病名</label>
@@ -60,6 +60,7 @@ option:disabled{color:#94a3b8;background-color:#f1f5f9;}
 <option value="動画編集">動画編集</option>
 <option value="PC作業（事務/デザイン）">PC作業（事務/デザイン）</option>
 <option value="ネイリスト（有資格者のみ）">ネイリスト（有資格者のみ）</option>
+<option value="清掃">清掃</option> 
 </select>
 </div>
 <label for="otherComment">9. その他</label>
